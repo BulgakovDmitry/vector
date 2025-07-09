@@ -353,8 +353,8 @@ static void vectorDataDump(const Vector vec)
     printf(GREEN "}\n" RESET);
 
     #ifdef VECTOR_CANARY_PROTECTION
-    printf(BLUE "vec.data" GREEN "[0]         = " RED "%p" GREEN
-        "   ; must be %p\n" RESET,
+    printf(BLUE "vec.data" GREEN "[0]          = "RED"%p" GREEN
+        " ; must be %p\n" RESET,
         vec.data[0], L_DATA_KANAR);
     printf(BLUE "vec.data" GREEN "[capacity-1] = " RED "%p" GREEN
         " ; must be %p\n" RESET,
