@@ -2,16 +2,16 @@
 
 int main(void)
 {
-    Stack_t stk = {};
-    stackCtor(&stk);
+    Vector vec = {};
+    vectorCtor(&vec);
     
-    for (int i = 0; i < 16; i++)
+    /*for (int i = 0; i < 16; i++)
         stackPush(&stk, i + 1);
 
     for (int j = 0; j < 9; j++)
-        stackPop(&stk);
+        stackPop(&stk);*/
 
-    stackDump(stk);
-    stackDtor(&stk);
+    //stackDump(stk);
+    vectorDtor(&vec);
     return 0;
 }
