@@ -46,6 +46,11 @@ struct Vector
 | `Detailed dump`        | Error state visualization   |
 | `Hash protection`      | Data change detection       |
 
+This program also has a convenient console dump for data tracking and debugging
+<div align="center">
+  <img src="docs/dump.png" alt="Vector Dump Banner" width="500">  
+</div>
+
 ## 📂 Project Structure
 ```txt
 vector/
