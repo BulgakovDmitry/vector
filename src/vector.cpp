@@ -17,16 +17,16 @@ static uint64_t vectorDataHashCalc  (const char* start, const char* end);
 static uint64_t vectorStructHashCalc(const Vector* vec); 
 #endif
 
-#define VERIFICATION(...)                                                 \
-do                                                                        \
-{                                                                         \
-    if (verifyError != OK)                                                \
-    {                                                                     \
-        V_DBG(fprintf(stderr, RED "Error: verifyError != OK\n" RESET);)   \
+#define VERIFICATION(...)                                                  \
+do                                                                         \
+{                                                                          \
+    if (verifyError != OK)                                                 \
+    {                                                                      \
+        V_DBG(fprintf(stderr, RED "Error: verifyError != OK\n" RESET);)    \
         vectorDump(*vec);                                                  \
         vectorErrorDump(*vec);                                             \
-        __VA_ARGS__                                                       \
-    }                                                                     \
+        __VA_ARGS__                                                        \
+    }                                                                      \
 } while (0)          
 
 #ifdef VECTOR_CANARY_PROTECTION
@@ -43,22 +43,22 @@ static void removeDataCanaries(Vector* vec)
 {
     V_DBG(ASSERT(vec, "vec = nullptr", stderr);)
 
-    vec->data[0] = POISON;                         // REMOVING THE OLD LEFT  CANARY (CHANGE TO POISON)
+    vec->data[0]                 = POISON;         // REMOVING THE OLD LEFT  CANARY (CHANGE TO POISON)
     vec->data[vec->capacity - 1] = POISON;         // REMOVING THE OLD RIGHT CANARY (CHANGE TO POISON)
 }
 static void installVectorCanaries(Vector* vec)
 {
     V_DBG(ASSERT(vec, "vec = nullptr", stderr);)
 
-    vec->leftVectorCanary = L_STACK_KANAR;          // INSTALLING A NEW LEFT  CANARY ON STACK
-    vec->rightVectorCanary = R_STACK_KANAR;         // INSTALLING A NEW RIGHT CANARY ON STACK
+    vec->leftVectorCanary  = L_STACK_KANAR;         // INSTALLING A NEW LEFT  CANARY ON VECTOR
+    vec->rightVectorCanary = R_STACK_KANAR;         // INSTALLING A NEW RIGHT CANARY ON VECTOR
 }
 
 static void removeVectorCanaries(Vector* vec)
 {
     V_DBG(ASSERT(vec, "vec = nullptr", stderr);)
 
-    vec->leftVectorCanary = 0;                      // REMOVING THE OLD LEFT  CANARY (CHANGE TO 0)
+    vec->leftVectorCanary  = 0;                     // REMOVING THE OLD LEFT  CANARY (CHANGE TO 0)
     vec->rightVectorCanary = 0;                     // REMOVING THE OLD RIGHT CANARY (CHANGE TO 0)
 }
 #endif
@@ -84,9 +84,9 @@ static uint64_t vectorStructHashCalc(const Vector* vec)
 {
     V_DBG(ASSERT(vec, "vec = nullptr", stderr);)
 
-    Vector tmp = *vec;               // local copy
-    tmp.dataHashSum  = 0;             // to keep it out of the hash
-    tmp.stackHashSum = 0;
+    Vector tmp        = *vec;          // local copy
+    tmp.dataHashSum   = 0;             // to keep it out of the hash
+    tmp.vectorHashSum = 0;
 
     const unsigned char* bytes = reinterpret_cast<const unsigned char*>(&tmp);
     const size_t         size  = sizeof(tmp);
@@ -124,8 +124,9 @@ void vectorCtor(Vector* vec)
         vec->data[i] = POISON;
 
     #ifdef VECTOR_HASH_PROTECTION
-    vec->dataHashSum  = vectorDataHashCalc(reinterpret_cast<const char*>(vec->data), reinterpret_cast<const char*>(vec->data + vec->capacity));
-    vec->stackHashSum = vectorStructHashCalc(vec);
+    vec->dataHashSum   = vectorDataHashCalc(reinterpret_cast<const char*>(vec->data), 
+                                            reinterpret_cast<const char*>(vec->data + vec->capacity));
+    vec->vectorHashSum = vectorStructHashCalc(vec);
     #endif
 
     VectorError verifyError = (VectorError)vectorVerify(vec);
@@ -147,7 +148,7 @@ void vectorDtor(Vector* vec)
     
     V_CAN_PR(removeVectorCanaries(vec);)
 
-    V_HASH_PR(vec->dataHashSum = 0; vec->stackHashSum = 0;)
+    V_HASH_PR(vec->dataHashSum = 0; vec->vectorHashSum = 0;)
     memset(vec, 0, sizeof(*vec));
 }
 
@@ -174,8 +175,9 @@ VectorError vectorPush(Vector* vec, VectorElem_t value)
             vec->errorStatus |= ALLOC_ERROR;
 
             #ifdef VECTOR_HASH_PROTECTION
-                vec->dataHashSum  = vectorDataHashCalc(reinterpret_cast<char*>(vec->data), reinterpret_cast<char*>(vec->data + vec->capacity));
-                vec->stackHashSum = vectorStructHashCalc(vec);
+                vec->dataHashSum  = vectorDataHashCalc(reinterpret_cast<char*>(vec->data), 
+                                                       reinterpret_cast<char*>(vec->data + vec->capacity));
+                vec->vectorHashSum = vectorStructHashCalc(vec);
             #endif
 
             return ALLOC_ERROR;
@@ -194,8 +196,9 @@ VectorError vectorPush(Vector* vec, VectorElem_t value)
     vec->data[vec->size] = value;
 
     #ifdef VECTOR_HASH_PROTECTION
-    vec->dataHashSum  = vectorDataHashCalc(reinterpret_cast<const char*>(vec->data), reinterpret_cast<const char*>(vec->data + vec->capacity));
-    vec->stackHashSum = vectorStructHashCalc(vec);
+    vec->dataHashSum  = vectorDataHashCalc(reinterpret_cast<const char*>(vec->data), 
+                                           reinterpret_cast<const char*>(vec->data + vec->capacity));
+    vec->vectorHashSum = vectorStructHashCalc(vec);
     #endif
 
     verifyError = (VectorError)vectorVerify(vec); // final check
@@ -243,8 +246,9 @@ VectorElem_t vectorPop(Vector* vec)
             V_CAN_PR(installDataCanaries(vec);)
 
             #ifdef VECTOR_HASH_PROTECTION
-                vec->dataHashSum  = vectorDataHashCalc(reinterpret_cast<char*>(vec->data), reinterpret_cast<char*>(vec->data + vec->capacity));
-                vec->stackHashSum = vectorStructHashCalc(vec);
+                vec->dataHashSum   = vectorDataHashCalc(reinterpret_cast<char*>(vec->data), \
+                                                        reinterpret_cast<char*>(vec->data + vec->capacity));
+                vec->vectorHashSum = vectorStructHashCalc(vec);
             #endif
 
             return temp;
@@ -259,8 +263,9 @@ VectorElem_t vectorPop(Vector* vec)
     }
 
     #ifdef VECTOR_HASH_PROTECTION
-    vec->dataHashSum  = vectorDataHashCalc(reinterpret_cast<const char*>(vec->data), reinterpret_cast<const char*>(vec->data + vec->capacity));
-    vec->stackHashSum = vectorStructHashCalc(vec);
+    vec->dataHashSum  = vectorDataHashCalc(reinterpret_cast<const char*>(vec->data), 
+                                           reinterpret_cast<const char*>(vec->data + vec->capacity));
+    vec->vectorHashSum = vectorStructHashCalc(vec);
     #endif
 
     verifyError = (VectorError)vectorVerify(vec);
@@ -269,7 +274,7 @@ VectorElem_t vectorPop(Vector* vec)
     return temp;
 }
 
-VectorElem_t vectorGet(const Vector* vec)
+VectorElem_t vectorGet(const Vector* vec, const size_t index)
 {
     if (!vec) 
     {
@@ -287,63 +292,102 @@ VectorElem_t vectorGet(const Vector* vec)
         return POISON;
     }
 
+    if (index >= vec->size)
+    {
+        V_DBG(fprintf(stderr, RED "INDEX %zu OUT OF BOUNDS (size = %zu)\n" RESET,
+                      index, vec->size);)
+        (const_cast<Vector*>(vec))->errorStatus |= INDEX_OUT_OF_RANGE;
+        return POISON;
+    }
+
     #ifdef VECTOR_HASH_PROTECTION
-    uint64_t current_data_hash  = vectorDataHashCalc(reinterpret_cast<const char*>(vec->data), reinterpret_cast<const char*>(vec->data + vec->capacity));
-    uint64_t current_stack_hash = vectorStructHashCalc(vec);
+    uint64_t currentDataHash   = vectorDataHashCalc(reinterpret_cast<const char*>(vec->data), 
+                                                    reinterpret_cast<const char*>(vec->data + vec->capacity));
+    uint64_t currentVectorHash = vectorStructHashCalc(vec);
     
-    if (current_data_hash != vec->dataHashSum) 
+    if (currentDataHash != vec->dataHashSum) 
     {
         (const_cast<Vector*>(vec))->errorStatus |= DATA_HASH_ERROR;
         V_DBG(fprintf(stderr, RED "DATA HASH MISMATCH in vectorGet\n" RESET);)
         return POISON;
     }
     
-    if (current_stack_hash != vec->stackHashSum) 
+    if (currentVectorHash != vec->vectorHashSum) 
     {
-        (const_cast<Vector*>(vec))->errorStatus |= STACK_HASH_ERROR;
+        (const_cast<Vector*>(vec))->errorStatus |= VECTOR_HASH_ERROR;
         V_DBG(fprintf(stderr, RED "STRUCT HASH MISMATCH in vectorGet\n" RESET);)
         return POISON;
     }
     #endif
 
-    return vec->data[vec->size];
+    return vec->data[index + 1]; // +1 because of canary
 }
 
 #undef VERIFICATION
 
-static void vectorDataDump(Vector vec)
+static void vectorDataDump(const Vector vec)
 {
-    printf("%s{%s\n", GREEN, RESET);
+    printf(GREEN "{\n" RESET);
 
-    for (size_t i = 0; i < vec.capacity; i++)
-        printf("  %s[%s%3zu%s]   = %s%3lg%s\n", GREEN, MANG, i, GREEN, RED, *((double*)vec.data[i]), RESET);
-    
-    printf("%s}%s\n", GREEN, RESET);
-    
-    printf("%svec.data%s[%s0%s]            = %s%lg %s[ %shex%s 0x%X%s ]%s", BLUE, GREEN, MANG, GREEN, RED, *((double*)vec.data[0]), MANG, BLUE, RED, (unsigned int)(uintptr_t)vec.data[0], MANG, RESET);
-    V_CAN_PR(printf(" %s[%s true hex%s %X %s]%s", MANG, BLUE, RED, (unsigned int)(uintptr_t)L_DATA_KANAR, MANG, RESET);)
-    putchar('\n');
-    printf("%svec.data%s[%scapacity - 1%s] = %s%lg %s[ %shex%s 0x%X%s ]%s", BLUE, GREEN, MANG, GREEN, RED, *((double*)vec.data[vec.capacity - 1]), MANG, BLUE, RED, (unsigned int)(uintptr_t)vec.data[vec.capacity - 1], MANG, RESET);
-    V_CAN_PR(printf(" %s[%s true hex%s %X %s]%s", MANG, BLUE, RED, (unsigned int)(uintptr_t)R_DATA_KANAR, MANG, RESET);)
-    putchar('\n');
+    for (size_t i = 0; i < vec.capacity; ++i)
+    {
+        printf("  " GREEN "[" MANG "%3zu" GREEN "] = ", i);
+
+        VectorElem_t val = vec.data[i];
+
+        if (val == POISON)
+            printf(RED "<POISON>" RESET);
+        #ifdef VECTOR_CANARY_PROTECTION
+        else if (val == L_DATA_KANAR)
+            printf(RED "<L_DATA_CANARY>" RESET);
+        else if (val == R_DATA_KANAR)
+            printf(RED "<R_DATA_CANARY>" RESET);
+        #endif
+        else
+            printf(RED "%p" GREEN " (%" PRIuPTR ")" RESET, val,
+                   (uintptr_t)val);
+
+        putchar('\n');
+    }
+
+    printf(GREEN "}\n" RESET);
+
+    #ifdef VECTOR_CANARY_PROTECTION
+    printf(BLUE "vec.data" GREEN "[0]         = " RED "%p" GREEN
+        "   ; must be %p\n" RESET,
+        vec.data[0], L_DATA_KANAR);
+    printf(BLUE "vec.data" GREEN "[capacity-1] = " RED "%p" GREEN
+        " ; must be %p\n" RESET,
+        vec.data[vec.capacity - 1], R_DATA_KANAR);
+    #endif
 }
 
-void vectorDump(Vector vec)
+void vectorDump(const Vector vec)
 {
-    printf("%s___vectorDump___~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~%s\n", RED, RESET);
+    printf(RED  "___vectorDump____________________________________________________________\n" RESET);
+
     #ifdef VECTOR_CANARY_PROTECTION
-    printf("%s{%sL_STACK_KANAR %s= %s%X%s", GREEN, BLUE, GREEN, RED, (unsigned int)vec.leftVectorCanary, RESET);
-    printf("%s, %sR_STACK_KANAR %s= %s%X%s}%s\n", GREEN, BLUE, GREEN, RED, (unsigned int)vec.rightVectorCanary, GREEN, RESET);
-    printf("%s{%sL_DATA_KANAR %s = %s%X%s, %s", GREEN, BLUE, GREEN, RED, (unsigned int)vec.data[0], GREEN, RESET);
-    printf("%sR_DATA_KANAR %s = %s%X%s}%s\n", BLUE, GREEN, RED, (unsigned int)vec.data[vec.capacity - 1], GREEN, RESET);
+    printf(GREEN "{ "
+        BLUE  "L_STACK_CANARY" GREEN " = " RED "%p" GREEN ", "
+        BLUE  "R_STACK_CANARY" GREEN " = " RED "%p" GREEN " }\n" RESET,
+        vec.leftVectorCanary, vec.rightVectorCanary);
+
+    printf(GREEN "{ "
+        BLUE  "L_DATA_CANARY"  GREEN " = " RED "%p" GREEN ", "
+        BLUE  "R_DATA_CANARY"  GREEN " = " RED "%p" GREEN " }\n" RESET,
+        vec.data ? vec.data[0] : nullptr,
+        vec.data ? vec.data[vec.capacity - 1] : nullptr);
     #endif
 
-    printf("%scapasity %s= %s%zu%s  ", BLUE, GREEN, RED, vec.capacity, RESET);
-    printf("%ssize %s= %s%zu%s\n", BLUE, GREEN, RED, vec.size, RESET);
-    printf("%sdata %s[%s%p%s]%s\n", CEAN, GREEN, MANG, vec.data, GREEN, RESET);
+    printf(BLUE "capacity" GREEN " = " RED "%zu" RESET ", "
+           BLUE "size"     GREEN " = " RED "%zu" RESET "\n",
+           vec.capacity, vec.size);
+
+    printf(CEAN "data" GREEN " [ " MANG "%p" GREEN " ]\n" RESET, vec.data);
 
     vectorDataDump(vec);
-    printf("%s~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~%s\n", RED, RESET);
+
+    printf(RED "_________________________________________________________________________\n" RESET);
 }
 
 
@@ -360,10 +404,10 @@ uint64_t vectorVerify(Vector* vec)
         errors |= SIZE_ERROR;
     
     #ifdef VECTOR_CANARY_PROTECTION
-    if (!doubleCmp(vec->leftVectorCanary, L_STACK_KANAR))
+    if (vec->leftVectorCanary  != L_STACK_KANAR)
         errors |= LEFT_VECTOR_CANARY_DIED;
         
-    if (!doubleCmp(vec->rightVectorCanary, R_STACK_KANAR))
+    if (vec->rightVectorCanary != R_STACK_KANAR)
         errors |= RIGHT_VECTOR_CANARY_DIED;
     
     if (!vec->data)
@@ -373,26 +417,27 @@ uint64_t vectorVerify(Vector* vec)
     }
     else 
     {
-        if (!doubleCmp(vec->data[0], L_DATA_KANAR))                  // check left data canary
-            errors |= LEFT_DATA_CANARY_DIED;                        // 
+        if (vec->data[0]                 != L_DATA_KANAR)                  
+            errors |= LEFT_DATA_CANARY_DIED;                       
             
-        if (!doubleCmp(vec->data[vec->capacity - 1], R_DATA_KANAR))  // check right data canary
-            errors |= RIGHT_DATA_CANARY_DIED;                       // 
+        if (vec->data[vec->capacity - 1] != R_DATA_KANAR) 
+            errors |= RIGHT_DATA_CANARY_DIED;                       
     }
     #endif
 
     #ifdef VECTOR_HASH_PROTECTION
     if (vec->data && vec->capacity > 0) // check data hash
     {
-        uint64_t currentDataHash = vectorDataHashCalc(reinterpret_cast<const char*>(vec->data), reinterpret_cast<const char*>(vec->data + vec->capacity));
+        uint64_t currentDataHash = vectorDataHashCalc(reinterpret_cast<const char*>(vec->data), 
+                                                      reinterpret_cast<const char*>(vec->data + vec->capacity));
         if (currentDataHash != vec->dataHashSum)
             errors |= DATA_HASH_ERROR;
     }
 
     
     uint64_t currentStackHash = vectorStructHashCalc(vec);
-    if (currentStackHash != vec->stackHashSum) // check stack hash
-        errors |= STACK_HASH_ERROR;
+    if (currentStackHash != vec->vectorHashSum) // check stack hash
+        errors |= VECTOR_HASH_ERROR;
     #endif
         
     vec->errorStatus = errors;
@@ -412,7 +457,7 @@ static const char* VectorErrors[NUMBER_OF_ERRORS] = {
                                                     "DATA_HASH_ERROR",
                                                     "INIT_HASH_ERROR",   
                                                    };
-VectorError vectorErrorDump(Vector vec)
+VectorError vectorErrorDump(const Vector vec)
 {
     printf("%s___vectorErrorDump___~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~%s\n", RED, RESET);
     for (size_t i = 0; i < NUMBER_OF_ERRORS; i++)

@@ -61,13 +61,14 @@ enum VectorError
     VECTOR_HASH_ERROR        = 1 << 8,
     DATA_HASH_ERROR          = 1 << 9,
     INIT_HASH_ERROR          = 1 << 10,   
+    INDEX_OUT_OF_RANGE       = 1 << 11,
     NUMBER_OF_ERRORS
 };
 
-const size_t START_SIZE       = 16;
-const VectorElem_t POISON      = (void*)-666;
-const size_t REDUCER_CAPACITY = 2;
-const uint64_t HASH_COEFF     = 33;
+const size_t       START_SIZE       = 16;
+const VectorElem_t POISON           = (VectorElem_t)-666;
+const size_t       REDUCER_CAPACITY = 2;
+const uint64_t     HASH_COEFF       = 33;
 
 const Canary_t L_DATA_KANAR  = (void*)0xEDAA;
 const Canary_t R_DATA_KANAR  = (void*)0xF00D;
@@ -79,11 +80,11 @@ void vectorDtor(Vector* stk);
 
 VectorError  vectorPush(Vector* vec, VectorElem_t value);
 VectorElem_t vectorPop (Vector* vec);
-VectorElem_t vectorGet (const Vector* vec);
+VectorElem_t vectorGet (const Vector* vec, const size_t index);
 
 uint64_t vectorVerify(Vector* vec);
 
-void vectorDump(Vector vec);
-VectorError vectorErrorDump(Vector vec);
+void        vectorDump     (const Vector vec);
+VectorError vectorErrorDump(const Vector vec);
 
 #endif
